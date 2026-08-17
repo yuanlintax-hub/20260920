@@ -1,11 +1,9 @@
-code
-Yaml
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches:
-      - main #
+      - main
 
 permissions:
   contents: read
