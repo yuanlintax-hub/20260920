@@ -92,23 +92,68 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         body: JSON.stringify({ code }),
       });
 
-      const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          soundManager.playRedeemSuccess();
+          onRedeemSuccess({
+            serialNumber: data.serialNumber,
+            date: data.date,
+            time: data.time,
+            timestamp: data.timestamp,
+          });
+          return;
+        } else {
+          soundManager.playIncorrect();
+          setErrorMessage(data.error || "兌換碼不正確，請洽現場工作人員。");
+          return;
+        }
+      }
+      // If 404/server not found (e.g. GitHub Pages static hosting), fallback to client-side validation
+      throw new Error("Server not available, fallback to client");
+    } catch {
+      // Client-side fallback for static environments like GitHub Pages
+      if (code === "5566") {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hour = String(now.getHours()).padStart(2, "0");
+        const minute = String(now.getMinutes()).padStart(2, "0");
+        const second = String(now.getSeconds()).padStart(2, "0");
 
-      if (response.ok && data.success) {
+        const dateStr = `${year}/${month}/${day}`;
+        const timeStr = `${hour}:${minute}:${second}`;
+
+        let currentCount = 0;
+        try {
+          const stored = localStorage.getItem("tax_piggy_records");
+          const parsed = stored ? JSON.parse(stored) : [];
+          currentCount = parsed.length;
+          const newRecord = {
+            serialNumber: currentCount + 1,
+            date: dateStr,
+            time: timeStr,
+            timestamp: Date.now(),
+          };
+          parsed.push(newRecord);
+          localStorage.setItem("tax_piggy_records", JSON.stringify(parsed));
+          currentCount = parsed.length;
+        } catch {
+          currentCount += 1;
+        }
+
         soundManager.playRedeemSuccess();
         onRedeemSuccess({
-          serialNumber: data.serialNumber,
-          date: data.date,
-          time: data.time,
-          timestamp: data.timestamp,
+          serialNumber: currentCount,
+          date: dateStr,
+          time: timeStr,
+          timestamp: Date.now(),
         });
       } else {
         soundManager.playIncorrect();
-        setErrorMessage(data.error || "兌換碼不正確，請洽現場工作人員。");
+        setErrorMessage("工作人員專用密碼不正確。");
       }
-    } catch (err) {
-      soundManager.playIncorrect();
-      setErrorMessage("系統暫時無法完成兌換，請洽現場工作人員。");
     } finally {
       setIsSubmitting(false);
     }

@@ -52,18 +52,52 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
         },
         body: JSON.stringify({ password: pwd }),
       });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setData(json);
-        setIsAuthenticated(true);
-        setErrorMsg(null);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setData(json);
+          setIsAuthenticated(true);
+          setErrorMsg(null);
+          return;
+        } else {
+          setErrorMsg(json.error || "密碼錯誤，請重新輸入。");
+          soundManager.playIncorrect();
+          return;
+        }
+      }
+      throw new Error("API not available");
+    } catch {
+      // Fallback for GitHub Pages static hosting
+      if (pwd === "5566") {
+        try {
+          const stored = localStorage.getItem("tax_piggy_records");
+          const records: Array<{ date: string; time: string }> = stored ? JSON.parse(stored) : [];
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
+          const todayRecords = records.filter((r) => r.date === todayStr);
+          const lastRecord = records[records.length - 1];
+
+          setData({
+            totalRedemptions: records.length,
+            todayRedemptions: todayRecords.length,
+            lastRedemptionTime: lastRecord ? `${lastRecord.date} ${lastRecord.time}` : "尚無紀錄",
+            statsStartTime: "靜態本機儲存庫",
+          });
+          setIsAuthenticated(true);
+          setErrorMsg(null);
+        } catch {
+          setData({
+            totalRedemptions: 0,
+            todayRedemptions: 0,
+            lastRedemptionTime: "尚無紀錄",
+            statsStartTime: "靜態本機儲存庫",
+          });
+          setIsAuthenticated(true);
+        }
       } else {
-        setErrorMsg(json.error || "密碼錯誤，請重新輸入。");
+        setErrorMsg("密碼錯誤，請重新輸入。");
         soundManager.playIncorrect();
       }
-    } catch {
-      setErrorMsg("連線異常，請稍候再試。");
-      soundManager.playIncorrect();
     } finally {
       setIsLoading(false);
     }
@@ -81,24 +115,34 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
         },
         body: JSON.stringify({ password }),
       });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setData({
-          totalRedemptions: 0,
-          todayRedemptions: 0,
-          lastRedemptionTime: "尚無紀錄",
-          statsStartTime: json.statsStartTime,
-        });
-        setSuccessMsg("兌換紀錄已成功清空重置為 0 筆！");
-        soundManager.playCorrect();
-        setTimeout(() => setSuccessMsg(null), 4000);
-      } else {
-        setErrorMsg(json.error || "清除失敗，請檢查密碼。");
-        soundManager.playIncorrect();
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setData({
+            totalRedemptions: 0,
+            todayRedemptions: 0,
+            lastRedemptionTime: "尚無紀錄",
+            statsStartTime: json.statsStartTime,
+          });
+          setSuccessMsg("兌換紀錄已成功清空重置為 0 筆！");
+          soundManager.playCorrect();
+          setTimeout(() => setSuccessMsg(null), 4000);
+          return;
+        }
       }
+      throw new Error("API not available");
     } catch {
-      setErrorMsg("連線異常，無法清除紀錄。");
-      soundManager.playIncorrect();
+      // Fallback for GitHub Pages static hosting
+      localStorage.removeItem("tax_piggy_records");
+      setData({
+        totalRedemptions: 0,
+        todayRedemptions: 0,
+        lastRedemptionTime: "尚無紀錄",
+        statsStartTime: "剛剛已重置",
+      });
+      setSuccessMsg("兌換紀錄已成功清空重置為 0 筆！");
+      soundManager.playCorrect();
+      setTimeout(() => setSuccessMsg(null), 4000);
     } finally {
       setIsLoading(false);
     }
