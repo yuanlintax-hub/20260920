@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .pig-bg {
+    background-color: #FEF3C7;
+    background-image: radial-gradient(#FBCFE8 2.5px, transparent 2.5px);
+    background-size: 24px 24px;
+  }
+
+  .editorial-card {
+    background-color: #FFFFFF;
+    border: 8px solid #78350F;
+    box-shadow: 0 25px 50px -12px rgba(120, 53, 15, 0.25);
+  }
+
+  @media (min-width: 640px) {
+    .editorial-card {
+      border-width: 12px;
+    }
+  }
+
+  .btn-editorial-red {
+    background-color: #DC2626;
+    color: #FFFFFF;
+    box-shadow: 0 5px 0 #991B1B;
+    transition: all 0.1s ease-in-out;
+  }
+
+  .btn-editorial-red:hover {
+    background-color: #EF4444;
+  }
+
+  .btn-editorial-red:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #991B1B;
+  }
+
+  .btn-editorial-red:disabled {
+    background-color: #E2E8F0;
+    color: #94A3B8;
+    box-shadow: 0 4px 0 #CBD5E1;
+    transform: none;
+    cursor: not-allowed;
+  }
+
+  .btn-editorial-amber {
+    background-color: #78350F;
+    color: #FFFFFF;
+    box-shadow: 0 5px 0 #451A03;
+    transition: all 0.1s ease-in-out;
+  }
+
+  .btn-editorial-amber:hover {
+    background-color: #92400E;
+  }
+
+  .btn-editorial-amber:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #451A03;
+  }
+
+  .btn-editorial-amber:disabled {
+    background-color: #E2E8F0;
+    color: #94A3B8;
+    box-shadow: 0 4px 0 #CBD5E1;
+    transform: none;
+    cursor: not-allowed;
+  }
+
+  .btn-editorial-emerald {
+    background-color: #059669;
+    color: #FFFFFF;
+    box-shadow: 0 5px 0 #065F46;
+    transition: all 0.1s ease-in-out;
+  }
+
+  .btn-editorial-emerald:hover {
+    background-color: #10B981;
+  }
+
+  .btn-editorial-emerald:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #065F46;
+  }
+}

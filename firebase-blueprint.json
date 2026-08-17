@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "redemptions": {
+      "title": "Redemption Records",
+      "description": "Stores completed gift redemption events for the Changhua Pork Festival Tax Pinball challenge.",
+      "type": "object",
+      "properties": {
+        "serialNumber": {
+          "type": "number",
+          "description": "Sequential redemption sequence number starting from 1"
+        },
+        "date": {
+          "type": "string",
+          "description": "Redemption date in YYYY/MM/DD (Asia/Taipei)"
+        },
+        "time": {
+          "type": "string",
+          "description": "Redemption time in HH:mm:ss (Asia/Taipei)"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "UTC timestamp in milliseconds"
+        }
+      },
+      "required": ["serialNumber", "date", "time", "timestamp"]
+    },
+    "activity_metadata": {
+      "title": "Activity Metadata",
+      "description": "Stores global stats start time and counters.",
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "description": "Activity initial start timestamp"
+        },
+        "totalCount": {
+          "type": "number",
+          "description": "Total redemption count"
+        }
+      },
+      "required": ["startTime", "totalCount"]
+    }
+  },
+  "firestore": {
+    "/redemptions/{redemptionId}": {
+      "entity": "redemptions",
+      "description": "Individual redemption records logged by authoritative server API."
+    },
+    "/metadata/stats": {
+      "entity": "activity_metadata",
+      "description": "Aggregated stats document."
+    }
+  }
+}

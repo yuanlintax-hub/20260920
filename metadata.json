@@ -1,0 +1,6 @@
+{
+  "name": "豬事大吉！彰化豚肉節租稅彈珠挑戰賽",
+  "description": "結合彰化豚肉節美食與租稅問答的復古彈珠台挑戰賽，包含租稅問答、物理彈珠、豚寶磁力防卡機制、宣導品兌換與工作人員後台統計管理。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
