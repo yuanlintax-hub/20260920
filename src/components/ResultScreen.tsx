@@ -113,7 +113,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       throw new Error("Server not available, fallback to client");
     } catch {
       // Client-side fallback for static environments like GitHub Pages
-      if (code === "5566") {
+      if (code === "7777" || code === "5566") {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, "0");

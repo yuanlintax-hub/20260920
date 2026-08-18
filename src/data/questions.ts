@@ -43,7 +43,7 @@ export const TAX_QUESTIONS: QuizQuestion[] = [
       "C. 豚肉節所有工作車輛",
     ],
     correctAnswer: "A. 爸爸車輛車籍地和阿公戶籍同地址",
-    explanation: "二親等親屬戶籍地或車籍地同無駕照的身障者戶籍地，可以供其使用的車輛申請免稅。",
+    explanation: "2親等親屬車輛供無駕照身障者使用，若其戶籍地或車籍地和身障者戶籍地同地址，該車輛可以申請免牌照稅。",
   },
   {
     id: 6,
