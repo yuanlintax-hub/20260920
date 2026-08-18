@@ -45,18 +45,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           Authorization: `Bearer ${token}`,
         },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setStats(data);
-      } else {
-        if (res.status === 401) {
-          onLogout();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setStats(data);
+          return;
         } else {
-          setErrorMessage(data.error || "讀取統計資料失敗。");
+          if (res.status === 401) {
+            onLogout();
+            return;
+          } else {
+            setErrorMessage(data.error || "讀取統計資料失敗。");
+            return;
+          }
         }
       }
-    } catch (err) {
-      setErrorMessage("網路連線錯誤，無法取得統計。");
+      throw new Error("API not available");
+    } catch {
+      // Fallback for static hosting (e.g. GitHub Pages)
+      try {
+        const stored = localStorage.getItem("tax_piggy_records");
+        const records = stored ? JSON.parse(stored) : [];
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
+        const todayRecords = records.filter((r: { date: string }) => r.date === todayStr);
+        const lastRecord = records[records.length - 1];
+
+        setStats({
+          success: true,
+          totalRedemptions: records.length,
+          todayRedemptions: todayRecords.length,
+          lastRedemptionTime: lastRecord ? `${lastRecord.date} ${lastRecord.time}` : "尚無紀錄",
+          statsStartTime: "靜態本機儲存庫",
+          records: records.map((r: { serialNumber?: number; date?: string; time?: string; timestamp?: number }, idx: number) => ({
+            serialNumber: r.serialNumber ?? idx + 1,
+            date: r.date ?? todayStr,
+            time: r.time ?? "00:00:00",
+            timestamp: r.timestamp ?? Date.now(),
+          })),
+        });
+      } catch {
+        setStats({
+          success: true,
+          totalRedemptions: 0,
+          todayRedemptions: 0,
+          lastRedemptionTime: "尚無紀錄",
+          statsStartTime: "靜態本機儲存庫",
+          records: [],
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -134,12 +171,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-      } else {
-        const data = await res.json();
-        alert(data.error || "匯出失敗");
+        return;
       }
-    } catch (err) {
-      alert("匯出過程發生錯誤，請稍後再試。");
+      throw new Error("API export not available");
+    } catch {
+      // Fallback CSV export on client side
+      try {
+        const records = stats.records;
+        const csvRows = [
+          "序號,日期,時間,兌換時間戳記",
+          ...records.map(
+            (r) => `${r.serialNumber},${r.date},${r.time},${r.timestamp}`
+          ),
+        ];
+        const csvContent = "\uFEFF" + csvRows.join("\r\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `彰化豚肉節_兌換明細_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch {
+        alert("匯出過程發生錯誤，請稍後再試。");
+      }
     } finally {
       setIsExporting(false);
     }
@@ -161,16 +218,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           "Content-Type": "application/json",
         },
       });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        soundManager.playCorrect();
-        alert("已成功清除所有兌換紀錄！");
-        fetchStats();
-      } else {
-        alert(json.error || "清除失敗");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          soundManager.playCorrect();
+          alert("已成功清除所有兌換紀錄！");
+          fetchStats();
+          return;
+        }
       }
+      throw new Error("API reset not available");
     } catch {
-      alert("連線異常，無法清除紀錄。");
+      // Fallback reset on client side
+      localStorage.removeItem("tax_piggy_records");
+      soundManager.playCorrect();
+      alert("已成功清除所有兌換紀錄！");
+      fetchStats();
     } finally {
       setIsLoading(false);
     }

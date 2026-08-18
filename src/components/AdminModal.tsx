@@ -36,18 +36,29 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         body: JSON.stringify({ password }),
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success && data.token) {
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.token) {
+          setPassword("");
+          onLoginSuccess(data.token);
+          return;
+        } else {
+          soundManager.playIncorrect();
+          setErrorMessage(data.error || "密碼錯誤，請重新輸入。");
+          return;
+        }
+      }
+      throw new Error("Server not available");
+    } catch {
+      // Fallback for static hosting (e.g. GitHub Pages)
+      if (password === "5566") {
         setPassword("");
-        onLoginSuccess(data.token);
+        soundManager.playCorrect();
+        onLoginSuccess("static_admin_token_5566");
       } else {
         soundManager.playIncorrect();
-        setErrorMessage(data.error || "密碼錯誤，請重新輸入。");
+        setErrorMessage("工作人員密碼不正確，請重新輸入。");
       }
-    } catch (err) {
-      soundManager.playIncorrect();
-      setErrorMessage("網路連線異常，請稍後再試。");
     } finally {
       setIsLoading(false);
     }
