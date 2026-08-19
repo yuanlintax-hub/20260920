@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { soundManager } from "../utils/audio";
+import { fetchCloudStats, clearAllCloudStats } from "../utils/firebase";
 import {
   Users,
   CalendarDays,
@@ -15,6 +16,7 @@ import {
   Search,
   Filter,
   Trash2,
+  Gamepad2,
 } from "lucide-react";
 import { AdminStatsData } from "../types";
 
@@ -54,43 +56,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           if (res.status === 401) {
             onLogout();
             return;
-          } else {
-            setErrorMessage(data.error || "讀取統計資料失敗。");
-            return;
           }
         }
       }
       throw new Error("API not available");
     } catch {
-      // Fallback for static hosting (e.g. GitHub Pages)
+      // Cloud Firestore cross-device fallback
       try {
-        const stored = localStorage.getItem("tax_piggy_records");
-        const records = stored ? JSON.parse(stored) : [];
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
-        const todayRecords = records.filter((r: { date: string }) => r.date === todayStr);
-        const lastRecord = records[records.length - 1];
-
+        const cloudData = await fetchCloudStats();
         setStats({
           success: true,
-          totalRedemptions: records.length,
-          todayRedemptions: todayRecords.length,
-          lastRedemptionTime: lastRecord ? `${lastRecord.date} ${lastRecord.time}` : "尚無紀錄",
-          statsStartTime: "靜態本機儲存庫",
-          records: records.map((r: { serialNumber?: number; date?: string; time?: string; timestamp?: number }, idx: number) => ({
-            serialNumber: r.serialNumber ?? idx + 1,
-            date: r.date ?? todayStr,
-            time: r.time ?? "00:00:00",
-            timestamp: r.timestamp ?? Date.now(),
-          })),
+          totalPlays: cloudData.totalPlays,
+          todayPlays: cloudData.todayPlays,
+          totalRedemptions: cloudData.totalRedemptions,
+          todayRedemptions: cloudData.todayRedemptions,
+          lastRedemptionTime: cloudData.lastRedemptionTime,
+          statsStartTime: "雲端資料庫即時同步",
+          records: cloudData.records || [],
         });
       } catch {
         setStats({
           success: true,
+          totalPlays: 0,
+          todayPlays: 0,
           totalRedemptions: 0,
           todayRedemptions: 0,
           lastRedemptionTime: "尚無紀錄",
-          statsStartTime: "靜態本機儲存庫",
+          statsStartTime: "雲端連線異常",
           records: [],
         });
       }
@@ -204,36 +196,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleClearRecords = async () => {
     const confirmed = window.confirm(
-      "【清除兌換紀錄警告】\n確定要清除並重置所有兌換紀錄嗎？\n清除後累計兌換總數與今日兌換數將全部歸零重新計算。"
+      "【清除紀錄警告】\n確定要清空雲端所有紀錄嗎？\n清除後跨裝置累計遊玩人次、兌換總數與今日數值將全部歸零重新計算。"
     );
     if (!confirmed) return;
 
     soundManager.playClick();
     setIsLoading(true);
     try {
-      const res = await fetch("/api/redemptions/reset", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          soundManager.playCorrect();
-          alert("已成功清除所有兌換紀錄！");
-          fetchStats();
-          return;
-        }
-      }
-      throw new Error("API reset not available");
-    } catch {
-      // Fallback reset on client side
-      localStorage.removeItem("tax_piggy_records");
+      await clearAllCloudStats();
       soundManager.playCorrect();
-      alert("已成功清除所有兌換紀錄！");
+      alert("已成功清除所有跨裝置紀錄！");
       fetchStats();
+    } catch {
+      alert("清除失敗，請檢查網路連線。");
     } finally {
       setIsLoading(false);
     }
@@ -344,51 +319,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           )}
 
           {/* Stats Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* Total Game Plays */}
+            <div className="bg-sky-50 p-4 rounded-2xl border-2 border-sky-300 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-sky-900 mb-1.5">
+                <span className="text-xs font-black">累計遊玩人次</span>
+                <Gamepad2 className="w-4 h-4 text-sky-600" />
+              </div>
+              <div className="text-3xl font-black text-sky-900 font-mono">
+                {stats ? (stats.totalPlays ?? 0) : "..."}
+                <span className="text-xs text-sky-700 font-sans font-bold ml-1">人次</span>
+              </div>
+              <span className="text-[10px] text-sky-600 font-bold mt-1">跨手機/電腦即時同步</span>
+            </div>
+
+            {/* Today Game Plays */}
+            <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-300 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-blue-900 mb-1.5">
+                <span className="text-xs font-black">今日遊玩人次</span>
+                <Users className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-3xl font-black text-blue-900 font-mono">
+                {stats ? (stats.todayPlays ?? 0) : "..."}
+                <span className="text-xs text-blue-700 font-sans font-bold ml-1">人次</span>
+              </div>
+              <span className="text-[10px] text-blue-600 font-bold mt-1">今日挑戰關卡次數</span>
+            </div>
+
             {/* Total Redemptions */}
             <div className="bg-[#FEF3C7] p-4 rounded-2xl border-2 border-[#78350F] shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[#78350F] mb-2">
-                <span className="text-xs font-black">累計兌換人數</span>
-                <Users className="w-4 h-4 text-[#DC2626]" />
+              <div className="flex items-center justify-between text-[#78350F] mb-1.5">
+                <span className="text-xs font-black">累計兌換人次</span>
+                <Award className="w-4 h-4 text-[#DC2626]" />
               </div>
               <div className="text-3xl font-black text-[#DC2626] font-mono">
                 {stats ? stats.totalRedemptions : "..."}
                 <span className="text-xs text-[#78350F] font-sans font-bold ml-1">人次</span>
               </div>
+              <span className="text-[10px] text-[#B45309] font-bold mt-1">現場已核銷總數</span>
             </div>
 
             {/* Today Redemptions */}
-            <div className="bg-amber-50 p-4 rounded-2xl border-2 border-amber-300 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[#B45309] mb-2">
-                <span className="text-xs font-black">今日兌換人數</span>
-                <CalendarDays className="w-4 h-4 text-[#B45309]" />
+            <div className="bg-emerald-50 p-4 rounded-2xl border-2 border-emerald-300 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-emerald-900 mb-1.5">
+                <span className="text-xs font-black">今日兌換人次</span>
+                <CalendarDays className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="text-3xl font-black text-[#B45309] font-mono">
+              <div className="text-3xl font-black text-emerald-800 font-mono">
                 {stats ? stats.todayRedemptions : "..."}
-                <span className="text-xs text-slate-500 font-sans font-bold ml-1">人次</span>
+                <span className="text-xs text-emerald-600 font-sans font-bold ml-1">人次</span>
               </div>
-            </div>
-
-            {/* Last Redemption Time */}
-            <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-slate-600 mb-2">
-                <span className="text-xs font-black">最新兌換時間</span>
-                <Clock className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div className="text-xs font-black text-slate-800 font-mono">
-                {stats ? stats.lastRedemptionTime : "..."}
-              </div>
-            </div>
-
-            {/* Stats Start Time */}
-            <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-slate-600 mb-2">
-                <span className="text-xs font-black">統計起始時間</span>
-                <CheckCircle2 className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="text-xs font-black text-slate-800 font-mono">
-                {stats ? stats.statsStartTime : "..."}
-              </div>
+              <span className="text-[10px] text-emerald-700 font-bold mt-1">
+                最新: {stats?.lastRedemptionTime || "尚無紀錄"}
+              </span>
             </div>
           </div>
 

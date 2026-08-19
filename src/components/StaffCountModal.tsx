@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { soundManager } from "../utils/audio";
-import { X, RefreshCw, Shield, Lock, Clock, CalendarDays, Award, AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
+import { fetchCloudStats, clearAllCloudStats } from "../utils/firebase";
+import { X, RefreshCw, Shield, Lock, Clock, CalendarDays, Award, AlertCircle, CheckCircle2, Trash2, Smartphone, Users } from "lucide-react";
 
 interface StaffCountModalProps {
   isOpen: boolean;
@@ -9,6 +10,8 @@ interface StaffCountModalProps {
 }
 
 interface CountData {
+  totalPlays?: number;
+  todayPlays?: number;
   totalRedemptions: number;
   todayRedemptions: number;
   lastRedemptionTime: string;
@@ -45,6 +48,7 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
   const fetchCount = useCallback(async (pwd: string) => {
     setIsLoading(true);
     try {
+      // First try backend if available
       const res = await fetch("/api/redemptions/count", {
         method: "POST",
         headers: {
@@ -59,40 +63,19 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
           setIsAuthenticated(true);
           setErrorMsg(null);
           return;
-        } else {
-          setErrorMsg(json.error || "密碼錯誤，請重新輸入。");
-          soundManager.playIncorrect();
-          return;
         }
       }
       throw new Error("API not available");
     } catch {
-      // Fallback for GitHub Pages static hosting
+      // Firestore Cloud sync (works across all mobile devices & desktops)
       if (pwd === "5566") {
         try {
-          const stored = localStorage.getItem("tax_piggy_records");
-          const records: Array<{ date: string; time: string }> = stored ? JSON.parse(stored) : [];
-          const now = new Date();
-          const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
-          const todayRecords = records.filter((r) => r.date === todayStr);
-          const lastRecord = records[records.length - 1];
-
-          setData({
-            totalRedemptions: records.length,
-            todayRedemptions: todayRecords.length,
-            lastRedemptionTime: lastRecord ? `${lastRecord.date} ${lastRecord.time}` : "尚無紀錄",
-            statsStartTime: "靜態本機儲存庫",
-          });
+          const cloudData = await fetchCloudStats();
+          setData(cloudData);
           setIsAuthenticated(true);
           setErrorMsg(null);
         } catch {
-          setData({
-            totalRedemptions: 0,
-            todayRedemptions: 0,
-            lastRedemptionTime: "尚無紀錄",
-            statsStartTime: "靜態本機儲存庫",
-          });
-          setIsAuthenticated(true);
+          setErrorMsg("無法取得雲端統計資料，請檢查網路。");
         }
       } else {
         setErrorMsg("密碼錯誤，請重新輸入。");
@@ -108,41 +91,20 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
     setErrorMsg(null);
     setShowClearConfirm(false);
     try {
-      const res = await fetch("/api/redemptions/reset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          setData({
-            totalRedemptions: 0,
-            todayRedemptions: 0,
-            lastRedemptionTime: "尚無紀錄",
-            statsStartTime: json.statsStartTime,
-          });
-          setSuccessMsg("兌換紀錄已成功清空重置為 0 筆！");
-          soundManager.playCorrect();
-          setTimeout(() => setSuccessMsg(null), 4000);
-          return;
-        }
-      }
-      throw new Error("API not available");
-    } catch {
-      // Fallback for GitHub Pages static hosting
-      localStorage.removeItem("tax_piggy_records");
+      await clearAllCloudStats();
       setData({
+        totalPlays: 0,
+        todayPlays: 0,
         totalRedemptions: 0,
         todayRedemptions: 0,
         lastRedemptionTime: "尚無紀錄",
         statsStartTime: "剛剛已重置",
       });
-      setSuccessMsg("兌換紀錄已成功清空重置為 0 筆！");
+      setSuccessMsg("跨裝置紀錄已成功清空重置為 0！");
       soundManager.playCorrect();
       setTimeout(() => setSuccessMsg(null), 4000);
+    } catch {
+      setErrorMsg("清除失敗，請稍後再試。");
     } finally {
       setIsLoading(false);
     }
@@ -194,11 +156,11 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
                 STAFF ONLY
               </span>
               <h2 className="text-base font-black text-[#78350F]">
-                工作人員專屬統計
+                跨裝置即時統計
               </h2>
             </div>
             <p className="text-[11px] text-slate-500 font-bold mt-0.5">
-              彰化豚肉節 ‧ 兌換件數即時查閱與重整
+              手機/電腦所有裝置 ‧ 遊玩與兌換即時同步
             </p>
           </div>
         </div>
@@ -245,7 +207,7 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
                   setErrorMsg(null);
                 }}
                 autoFocus
-                placeholder="請輸入密碼"
+                placeholder="請輸入工作人員密碼"
                 className="w-full text-center py-2.5 px-3 bg-slate-50 border-2 border-amber-300 focus:border-[#78350F] rounded-xl text-lg font-black tracking-widest font-mono outline-hidden transition-colors"
               />
             </div>
@@ -256,7 +218,7 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
               className="w-full py-3 bg-[#78350F] hover:bg-[#5E290C] text-white rounded-xl font-black text-sm shadow-md active:scale-98 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               {isVerifying ? (
-                <span>驗證中...</span>
+                <span>載入雲端統計中...</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -268,35 +230,51 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
         ) : (
           /* Stats Display View */
           <div className="space-y-3.5 animate-in fade-in duration-200">
-            {/* Big Count Number Display */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Total count */}
-              <div className="bg-amber-50 rounded-2xl p-3.5 border-2 border-amber-200 text-center flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black text-[#B45309] mb-0.5">
-                  累計已兌換
+            {/* Total Game Plays vs Total Redemptions */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Total plays */}
+              <div className="bg-sky-50 rounded-2xl p-3 border-2 border-sky-200 text-center flex flex-col items-center justify-center">
+                <span className="text-[11px] font-black text-sky-800 flex items-center gap-1 mb-0.5">
+                  <Users className="w-3.5 h-3.5" /> 累計遊玩人次
                 </span>
-                <div className="text-3xl font-black text-[#DC2626] font-mono leading-none">
-                  {isLoading ? "..." : data?.totalRedemptions ?? 0}
+                <div className="text-2xl font-black text-sky-900 font-mono leading-none">
+                  {isLoading ? "..." : data?.totalPlays ?? 0}
                 </div>
-                <span className="text-[10px] text-slate-500 font-bold mt-1">件宣導品</span>
+                <span className="text-[10px] text-sky-600 font-bold mt-1">跨裝置遊玩</span>
               </div>
 
-              {/* Today count */}
-              <div className="bg-emerald-50 rounded-2xl p-3.5 border-2 border-emerald-200 text-center flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black text-emerald-800 mb-0.5">
-                  今日已兌換
+              {/* Total redemptions */}
+              <div className="bg-amber-50 rounded-2xl p-3 border-2 border-amber-200 text-center flex flex-col items-center justify-center">
+                <span className="text-[11px] font-black text-[#B45309] flex items-center gap-1 mb-0.5">
+                  <Award className="w-3.5 h-3.5" /> 累計兌換人次
                 </span>
-                <div className="text-3xl font-black text-emerald-700 font-mono leading-none">
-                  {isLoading ? "..." : data?.todayRedemptions ?? 0}
+                <div className="text-2xl font-black text-[#DC2626] font-mono leading-none">
+                  {isLoading ? "..." : data?.totalRedemptions ?? 0}
                 </div>
-                <span className="text-[10px] text-slate-500 font-bold mt-1">件宣導品</span>
+                <span className="text-[10px] text-slate-500 font-bold mt-1">已領取宣導品</span>
+              </div>
+            </div>
+
+            {/* Today counts */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-center">
+                <span className="text-[10px] font-black text-slate-500 block">今日遊玩人次</span>
+                <span className="text-lg font-black text-slate-800 font-mono">
+                  {isLoading ? "..." : data?.todayPlays ?? 0}
+                </span>
+              </div>
+              <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-200 text-center">
+                <span className="text-[10px] font-black text-emerald-800 block">今日兌換人次</span>
+                <span className="text-lg font-black text-emerald-700 font-mono">
+                  {isLoading ? "..." : data?.todayRedemptions ?? 0}
+                </span>
               </div>
             </div>
 
             {/* Details list */}
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2 text-xs font-bold text-slate-600">
+            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 space-y-1.5 text-xs font-bold text-slate-600">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1 text-slate-500">
+                <span className="flex items-center gap-1 text-slate-500 text-[11px]">
                   <Clock className="w-3.5 h-3.5 text-[#B45309]" />
                   最後兌換時間
                 </span>
@@ -306,12 +284,12 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
               </div>
               {data?.statsStartTime && (
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-slate-500">
+                  <span className="flex items-center gap-1 text-slate-500 text-[11px]">
                     <CalendarDays className="w-3.5 h-3.5 text-[#B45309]" />
-                    統計起始時間
+                    統計資料來源
                   </span>
-                  <span className="font-mono text-slate-800 font-black text-[11px]">
-                    {data.statsStartTime}
+                  <span className="font-mono text-emerald-700 font-black text-[10px]">
+                    雲端即時同步中
                   </span>
                 </div>
               )}
@@ -322,10 +300,10 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
               <div className="p-3 bg-rose-50 border-2 border-rose-300 rounded-xl space-y-2 animate-in fade-in duration-150">
                 <div className="flex items-center gap-1.5 text-rose-800 text-xs font-black">
                   <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>確定要清除所有兌換紀錄嗎？</span>
+                  <span>確定要清空雲端所有紀錄嗎？</span>
                 </div>
                 <p className="text-[11px] text-rose-700">
-                  清除後累計與今日兌換件數將歸零重新計算。
+                  清除後所有裝置的累計遊玩與兌換人次將同步歸零。
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <button
@@ -357,7 +335,7 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
                 type="button"
                 onClick={() => {
                   soundManager.playClick();
-                  setShowClearConfirm(true);
+                  fetchCount(password);
                 }}
                 disabled={isLoading}
                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-300"
@@ -387,3 +365,4 @@ export const StaffCountModal: React.FC<StaffCountModalProps> = ({
     </div>
   );
 };
+

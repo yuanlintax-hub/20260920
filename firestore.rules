@@ -1,14 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only backend or authorized admin can read/write redemption statistics
-    match /redemptions/{redemptionId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+    // Game play sessions logged across devices
+    match /game_plays/{playId} {
+      allow read, create: if true;
     }
+    // Redemption records logged when staff enters 7777
+    match /redemptions/{redemptionId} {
+      allow read, create: if true;
+      allow delete, update: if true;
+    }
+    // Activity aggregated metadata
     match /metadata/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }

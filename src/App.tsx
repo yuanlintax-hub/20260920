@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { GameScreen, QuizQuestion, RedemptionRecord } from "./types";
 import { getRandomFourQuestions } from "./data/questions";
 import { soundManager } from "./utils/audio";
+import { recordGamePlaySession } from "./utils/firebase";
 import { HomeScreen } from "./components/HomeScreen";
 import { QuizScreen } from "./components/QuizScreen";
 import { PinballScreen } from "./components/PinballScreen";
@@ -39,6 +40,8 @@ export default function App() {
     setTotalPinballScore(0);
     setCurrentBallIsGold(false);
     setCurrentScreen("QUIZ");
+    // Record game play session across all mobile/desktop devices
+    recordGamePlaySession(false, 0);
   };
 
   // Callback when a quiz question is answered
@@ -56,7 +59,8 @@ export default function App() {
 
   // Callback when a pinball round finishes (total 4 rounds)
   const handleBallFinish = (roundScore: number) => {
-    setTotalPinballScore((prev) => prev + roundScore);
+    const newTotal = totalPinballScore + roundScore;
+    setTotalPinballScore(newTotal);
 
     if (currentRound < 4) {
       // Proceed to Next Question

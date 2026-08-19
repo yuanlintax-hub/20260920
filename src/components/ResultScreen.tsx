@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { PiggyMascot } from "./PiggyMascot";
 import { soundManager } from "../utils/audio";
+import { recordCloudRedemption } from "../utils/firebase";
 import { Trophy, Gift, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { RedemptionRecord } from "../types";
 import { StaffCountModal } from "./StaffCountModal";
@@ -84,6 +85,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
     setErrorMessage(null);
 
     try {
+      // First try backend API if available
       const response = await fetch("/api/redeem", {
         method: "POST",
         headers: {
@@ -109,50 +111,21 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           return;
         }
       }
-      // If 404/server not found (e.g. GitHub Pages static hosting), fallback to client-side validation
-      throw new Error("Server not available, fallback to client");
+      throw new Error("Server not available, fallback to client cloud sync");
     } catch {
-      // Client-side fallback for static environments like GitHub Pages
+      // Direct Firestore Cloud Sync for GitHub Pages or static hosting
       if (code === "7777" || code === "5566") {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, "0");
-        const day = String(now.getDate()).padStart(2, "0");
-        const hour = String(now.getHours()).padStart(2, "0");
-        const minute = String(now.getMinutes()).padStart(2, "0");
-        const second = String(now.getSeconds()).padStart(2, "0");
-
-        const dateStr = `${year}/${month}/${day}`;
-        const timeStr = `${hour}:${minute}:${second}`;
-
-        let currentCount = 0;
         try {
-          const stored = localStorage.getItem("tax_piggy_records");
-          const parsed = stored ? JSON.parse(stored) : [];
-          currentCount = parsed.length;
-          const newRecord = {
-            serialNumber: currentCount + 1,
-            date: dateStr,
-            time: timeStr,
-            timestamp: Date.now(),
-          };
-          parsed.push(newRecord);
-          localStorage.setItem("tax_piggy_records", JSON.stringify(parsed));
-          currentCount = parsed.length;
+          const record = await recordCloudRedemption();
+          soundManager.playRedeemSuccess();
+          onRedeemSuccess(record);
         } catch {
-          currentCount += 1;
+          soundManager.playIncorrect();
+          setErrorMessage("兌換失敗，請檢查網路連線或洽工作人員。");
         }
-
-        soundManager.playRedeemSuccess();
-        onRedeemSuccess({
-          serialNumber: currentCount,
-          date: dateStr,
-          time: timeStr,
-          timestamp: Date.now(),
-        });
       } else {
         soundManager.playIncorrect();
-        setErrorMessage("工作人員專用密碼不正確。");
+        setErrorMessage("工作人員專用核銷密碼不正確。");
       }
     } finally {
       setIsSubmitting(false);

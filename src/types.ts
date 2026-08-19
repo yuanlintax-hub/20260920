@@ -30,6 +30,8 @@ export interface RedemptionRecord {
 }
 
 export interface AdminStatsData {
+  totalPlays?: number;
+  todayPlays?: number;
   totalRedemptions: number;
   todayRedemptions: number;
   lastRedemptionTime: string;

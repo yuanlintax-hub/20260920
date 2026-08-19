@@ -24,27 +24,67 @@
       },
       "required": ["serialNumber", "date", "time", "timestamp"]
     },
+    "game_plays": {
+      "title": "Game Play Records",
+      "description": "Stores player game play sessions across all devices (mobile, desktop, tablet).",
+      "type": "object",
+      "properties": {
+        "deviceType": {
+          "type": "string",
+          "description": "Device type (mobile, desktop, tablet)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY/MM/DD (Asia/Taipei)"
+        },
+        "time": {
+          "type": "string",
+          "description": "Time in HH:mm:ss (Asia/Taipei)"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "UTC timestamp in milliseconds"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the challenge was completed"
+        },
+        "score": {
+          "type": "number",
+          "description": "Final score achieved"
+        }
+      },
+      "required": ["date", "time", "timestamp"]
+    },
     "activity_metadata": {
       "title": "Activity Metadata",
-      "description": "Stores global stats start time and counters.",
+      "description": "Stores global stats start time, total plays, and redemption counters.",
       "type": "object",
       "properties": {
         "startTime": {
           "type": "string",
           "description": "Activity initial start timestamp"
         },
-        "totalCount": {
+        "totalPlays": {
           "type": "number",
-          "description": "Total redemption count"
+          "description": "Total games played across all devices"
+        },
+        "totalRedemptions": {
+          "type": "number",
+          "description": "Total gifts redeemed across all devices"
         }
       },
-      "required": ["startTime", "totalCount"]
+      "required": ["startTime"]
     }
   },
   "firestore": {
+    "/game_plays/{playId}": {
+      "entity": "game_plays",
+      "description": "Cross-device game play sessions."
+    },
     "/redemptions/{redemptionId}": {
       "entity": "redemptions",
-      "description": "Individual redemption records logged by authoritative server API."
+      "description": "Cross-device redemption records."
     },
     "/metadata/stats": {
       "entity": "activity_metadata",
