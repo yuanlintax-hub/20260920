@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { PiggyMascot } from "./PiggyMascot";
 import { soundManager } from "../utils/audio";
-import { Volume2, VolumeX, Shield, Play, Sparkles, Award } from "lucide-react";
+import { Volume2, VolumeX, ShieldCheck, Play, Sparkles, Award } from "lucide-react";
+import { StaffCountModal } from "./StaffCountModal";
 
 interface HomeScreenProps {
   onStart: () => void;
@@ -16,14 +17,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   isMuted,
   onToggleMute,
 }) => {
+  const [showStaffCount, setShowStaffCount] = useState<boolean>(false);
+
   const handleStart = () => {
     soundManager.playClick();
     onStart();
-  };
-
-  const handleAdminClick = () => {
-    soundManager.playClick();
-    onOpenAdmin();
   };
 
   const handleMuteClick = () => {
@@ -33,8 +31,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-between h-full w-full p-3.5 sm:p-5 text-center select-none bg-white overflow-hidden">
-      {/* Top Bar with Audio Control and Low-key Staff entrance */}
-      <header className="w-full flex items-center justify-between shrink-0">
+      {/* Top Bar with Audio Control */}
+      <header className="w-full flex items-center justify-start shrink-0">
         <button
           id="sound-toggle-btn"
           onClick={handleMuteClick}
@@ -42,16 +40,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           className="p-1.5 sm:p-2 rounded-xl bg-amber-50 text-[#78350F] border border-amber-200 hover:bg-amber-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
         >
           {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-        </button>
-
-        <button
-          id="admin-entrance-btn"
-          onClick={handleAdminClick}
-          aria-label="工作人員管理入口"
-          className="p-1.5 sm:p-2 rounded-xl text-[#78350F]/40 hover:text-[#78350F] hover:bg-amber-50 transition-all focus:outline-none cursor-pointer"
-          title="工作人員專區"
-        >
-          <Shield className="w-4 h-4" />
         </button>
       </header>
 
@@ -85,12 +73,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           答租稅題、拿彈珠，挑戰最高分！
         </p>
 
-        {/* Short Rules Card */}
-        <div className="w-full bg-[#FFFBEB] rounded-xl p-2.5 sm:p-3 border-2 border-amber-200 text-left mb-3 space-y-1.5 shrink-0">
-          <h3 className="text-[11px] font-black text-[#78350F] flex items-center gap-1.5 border-b border-amber-200/70 pb-1 uppercase tracking-wide">
-            <Award className="w-3.5 h-3.5 text-[#DC2626]" />
-            <span>玩法說明：</span>
-          </h3>
+        {/* Short Rules Card with STAFF ONLY in the corner */}
+        <div className="w-full bg-[#FFFBEB] rounded-xl p-2.5 sm:p-3 border-2 border-amber-200 text-left mb-3 space-y-1.5 shrink-0 relative">
+          <div className="flex items-center justify-between border-b border-amber-200/70 pb-1">
+            <h3 className="text-[11px] font-black text-[#78350F] flex items-center gap-1.5 uppercase tracking-wide">
+              <Award className="w-3.5 h-3.5 text-[#DC2626]" />
+              <span>玩法說明：</span>
+            </h3>
+
+            {/* STAFF ONLY button positioned neatly in the corner */}
+            <button
+              type="button"
+              onClick={() => {
+                soundManager.playClick();
+                setShowStaffCount(true);
+              }}
+              title="工作人員專區"
+              aria-label="STAFF ONLY"
+              className="text-black font-black px-1.5 py-0.5 rounded text-[10px] tracking-wider transition-colors flex items-center gap-1 cursor-pointer bg-amber-100 hover:bg-amber-200 border border-amber-300"
+            >
+              <ShieldCheck className="w-3 h-3 text-black" />
+              <span>STAFF ONLY</span>
+            </button>
+          </div>
 
           <ul className="space-y-1 text-xs text-slate-700 font-medium">
             <li className="flex items-center gap-1.5">
@@ -138,16 +143,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </button>
       </main>
 
-      {/* Footer copyright */}
-      <footer className="w-full flex items-center justify-between text-[10px] text-slate-400 font-medium pt-1.5 border-t border-slate-100 shrink-0">
+      {/* Footer message */}
+      <footer className="w-full flex items-center justify-center text-[11px] text-slate-400 font-medium pt-1.5 border-t border-slate-200/50 shrink-0">
         <span>彰化縣地方稅務局 關心您</span>
-        <button
-          onClick={handleAdminClick}
-          className="text-[#78350F]/30 hover:text-[#78350F] uppercase tracking-tighter cursor-pointer text-[10px]"
-        >
-          Staff
-        </button>
       </footer>
+
+      {/* Staff Count & Full Admin Modal */}
+      <StaffCountModal
+        isOpen={showStaffCount}
+        onClose={() => setShowStaffCount(false)}
+        onOpenFullAdmin={onOpenAdmin}
+      />
     </div>
   );
 };

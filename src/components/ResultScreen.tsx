@@ -3,9 +3,8 @@ import confetti from "canvas-confetti";
 import { PiggyMascot } from "./PiggyMascot";
 import { soundManager } from "../utils/audio";
 import { recordCloudRedemption } from "../utils/firebase";
-import { Trophy, Gift, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { Trophy, Gift, AlertCircle, Loader2 } from "lucide-react";
 import { RedemptionRecord } from "../types";
-import { StaffCountModal } from "./StaffCountModal";
 
 interface ResultScreenProps {
   correctCount: number;
@@ -26,7 +25,6 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [footerTapCount, setFooterTapCount] = useState<number>(0);
-  const [showStaffCount, setShowStaffCount] = useState<boolean>(false);
 
   // Compute title based on score
   const getPlayerTitle = (score: number): { title: string; desc: string; color: string } => {
@@ -242,34 +240,15 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </div>
       </main>
 
-      {/* Footer message with STAFF ONLY link */}
-      <footer className="w-full flex items-center justify-between text-[11px] text-slate-400 font-medium pt-1.5 border-t border-slate-200/50 shrink-0">
+      {/* Footer message */}
+      <footer className="w-full flex items-center justify-center text-[11px] text-slate-400 font-medium pt-1.5 border-t border-slate-200/50 shrink-0">
         <span
           onClick={handleFooterTap}
           className="cursor-default select-none text-slate-400 hover:text-slate-500"
         >
           彰化縣地方稅務局 ‧ 租稅宣導活動
         </span>
-
-        {/* STAFF ONLY link (Black text) */}
-        <button
-          type="button"
-          onClick={() => setShowStaffCount(true)}
-          title="STAFF ONLY"
-          aria-label="STAFF ONLY"
-          className="text-black font-black px-2 py-0.5 rounded text-xs tracking-wider transition-colors flex items-center gap-1 cursor-pointer bg-slate-100 hover:bg-slate-200 border border-slate-300"
-        >
-          <ShieldCheck className="w-3.5 h-3.5 text-black" />
-          <span>STAFF ONLY</span>
-        </button>
       </footer>
-
-      {/* Discreet Staff Count Modal */}
-      <StaffCountModal
-        isOpen={showStaffCount}
-        onClose={() => setShowStaffCount(false)}
-        onOpenFullAdmin={onOpenAdmin}
-      />
     </div>
   );
 };
